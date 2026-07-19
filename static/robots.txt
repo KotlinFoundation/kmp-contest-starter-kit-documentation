@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://kotlinfoundation.github.io/kmp-contest-starter-kit-documentation/sitemap.xml

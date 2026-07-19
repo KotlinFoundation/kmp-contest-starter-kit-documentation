@@ -1,0 +1,149 @@
+---
+sidebar_position: 2
+title: Set Up Your First App
+---
+
+# Set Up Your First App
+
+In about five minutes you will have both the Android and iOS apps running. This
+page covers the requirements, the initial configuration, and how to rename the
+app to your own brand.
+
+<YouTube id="5UdT3G2Kmx0" title="KMPStarterKit configuration walkthrough" />
+
+## Requirements
+
+Before you start, make sure you have:
+
+- Android Studio (latest stable version recommended)
+- Xcode (latest version) — for iOS development, macOS only
+- JDK 17 or later
+- Git
+- Node.js (active LTS — 20 or 22) + npm — only for the `Web/` Cloud Functions AI backend (the functions run on the Node 22 runtime)
+
+:::tip Verify your environment
+Install the [Kotlin Multiplatform IDE plugin](https://plugins.jetbrains.com/plugin/14936-kotlin-multiplatform)
+for Android Studio / IntelliJ — it runs preflight checks on your environment.
+:::
+
+## 1. Fork or clone the repository
+
+Clone or fork the repository to your machine. KMPStarterKit is distributed as a single
+monorepo containing the KMP mobile app, the web backend + landing page, and this documentation:
+
+SSH:
+```bash
+git clone git@github.com:KotlinFoundation/kmp-contest-starter-kit.git
+```
+or HTTPS:
+```bash
+git clone https://github.com/KotlinFoundation/kmp-contest-starter-kit.git
+```
+
+The repo layout:
+- `MobileApp/` — Kotlin Compose Multiplatform app (Android, iOS, JVM Desktop, Web/WASM)
+- `Web/` — Firebase Hosting landing page + Cloud Functions (AI backend)
+- `Documentation/` — this site (Docusaurus, git submodule)
+
+## 2. Open and run the Android app
+
+Open the `MobileApp/` folder in Android Studio, let Gradle sync, then run the Android app.
+
+## 3. Run the iOS app
+
+Open `MobileApp/iosApp/iosApp.xcodeproj` in Xcode. The iOS app uses Swift Package Manager for its
+native dependencies (Firebase, Google Mobile Ads, etc.) — no CocoaPods step — so Xcode
+resolves the packages automatically the first time. Wait for resolution to finish, then run.
+
+:::note SwiftPM-backed dependencies
+Some libraries link their native iOS SDK through Swift Package Manager. Those need a
+committed linkage package (`iosApp/KotlinMultiplatformLinkedPackage/`) plus embed-and-sign
+wiring, which ships ready to use. You only regenerate it when the set of SwiftPM dependencies
+changes. See [iOS Production](../production/iOS.md#swiftpm-dependencies--the-linkage-package) for details.
+:::
+
+## 4. Run on Desktop and Web (optional)
+
+The same shared app also targets JVM Desktop and Web (Wasm). Run either from `MobileApp/`:
+
+```bash
+# Desktop (JVM):
+./gradlew :desktopApp:run
+
+# Web (Wasm) dev server:
+./gradlew :webApp:wasmJsBrowserDevelopmentRun
+```
+
+## 5. You're set up
+
+Your apps now run, with authentication, notifications, and in-app purchases already
+wired up. Next, make the app your own.
+
+## 6. Change the application / bundle ID and name
+
+Run the `refactor_package.sh` script (from `MobileApp/`) to set your app ID and display
+name. The Kotlin/Java package structure (`package com.example.app`) is independent of the
+`applicationId` / bundle ID:
+
+```bash
+# Full refactor (renames Kotlin packages too):
+./scripts/refactor_package.sh --app-id com.example.newapp --app-name NewApp
+
+# Or keep Kotlin packages, change IDs + display name only:
+./scripts/refactor_package.sh --app-id com.example.newapp --app-name NewApp --skip-package-rename
+```
+
+Arguments:
+- `--app-id <id>` (required) — Android `applicationId` / iOS bundle ID.
+- `--app-name <name>` (required) — app display name.
+- `--skip-package-rename` (optional, default off — packages are renamed) — keep Kotlin
+  packages and directories unchanged; only update the `applicationId`, bundle ID, Firebase
+  references, and app name. Makes it easier to sync changes across multiple apps from the
+  same codebase and avoid future merge conflicts.
+
+:::tip
+Commit or back up your project before running the script, in case anything goes wrong.
+The script prints a plan and asks for confirmation before changing anything. Close Xcode
+before running it, and reopen it afterward to pick up the changes.
+:::
+
+Re-sync Gradle once and rebuild to make sure all changes applied.
+
+## 7. Keep your repository up to date
+
+To pull the latest changes, point `origin` at your own repository, then merge updates
+from the upstream monorepo:
+
+```bash
+git remote set-url origin <YOUR_GITHUB_REPO_URL>
+git remote add upstream git@github.com:KotlinFoundation/kmp-contest-starter-kit.git
+git fetch upstream
+git merge upstream/main
+```
+
+## Troubleshooting
+
+Common environment and first-deploy snags:
+
+- **Gradle sync fails with `Several environment variables and/or system properties contain different paths to the Android Preferences folder`** — both `ANDROID_PREFS_ROOT` and `ANDROID_USER_HOME` are set to different paths (seen on some CI/sandbox setups). Keep one:
+
+  ```bash
+  unset ANDROID_PREFS_ROOT
+  ```
+
+- **`command not found: firebase`** (when deploying the AI backend) — install the Firebase CLI: `npm install -g firebase-tools`, or with no Node required (macOS/Linux) `curl -sL https://firebase.tools | bash`.
+
+- **`firebase deploy --only functions` fails with a `403` / Secret Manager error** — enable the Secret Manager API for the project, then re-deploy. See [Firebase Integration](../features/firebase-integration.md).
+
+- **`Failed to make request to generateUploadUrl`** on a brand-new project — the project has no default resource location yet. Firebase Console → **Storage → Get Started** → pick a region, then re-deploy. (The app doesn't use Cloud Storage; this only lets Functions upload its deploy bundle.)
+
+## Next steps
+
+- Browse the [Features Overview](../features/overview.md) to see what's already built —
+  authentication, purchases, notifications, ads, AI, and more — before writing your own.
+- When you're ready to ship, work through the
+  [Pre-Publishing Checklist](../production/pre-publishing-checklist.md).
+
+Prefer video? Watch the essential-features configuration walkthrough:
+
+<YouTube id="6olW6pnx0B8" start={2694} title="Essential features configuration" />
