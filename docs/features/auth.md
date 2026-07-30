@@ -113,7 +113,7 @@ For Apple Sign-In to work in android, follow these steps:
 
 - **In-place mode toggle** — a "New here? Create account" / "Already have an account? Sign in" row at the bottom flips the screen between modes without navigating. The toolbar title and main heading update accordingly.
 - **Initial mode** — `SignInScreenRoute(isSignIn: Boolean = false)` chooses which mode the screen opens in. Pass `true` to land directly on sign-in.
-- **Existing-account fallback** — if the user attempts to create an account that already exists (`UserAlreadyExistsException` from the OAuth provider), the screen automatically switches to sign-in mode and surfaces a message.
+- **Existing-account fallback** — if the user attempts to create an account that already exists (`KMPAuthUserCollisionException` from KMPAuth), the screen automatically switches to sign-in mode and surfaces a message.
 - **Continue as guest** — a text button that calls `UserRepository.continueAsGuest()`, which signs the user in anonymously if they aren't already (KMPStarterKit also auto-signs anonymously on first launch via `signInAnonymouslyIfNecessary()`), then dismisses the screen.
 
 ## User Management

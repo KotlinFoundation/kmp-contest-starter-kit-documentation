@@ -35,4 +35,6 @@ Domain-specific exceptions for known error scenarios:
   for an example.
 - `PurchaseRequiredException` — the operation requires a premium subscription the user doesn't have.
 - `CreditRequiredException` — the operation requires more credits than the user's balance.
-- `UserAlreadyExistsException` — attempted to create a user that already exists.
+
+Auth-collision and reauthentication conditions are surfaced as typed KMPAuth exceptions
+(`KMPAuthUserCollisionException`, `KMPAuthRecentLoginRequiredException`), not domain exceptions.
