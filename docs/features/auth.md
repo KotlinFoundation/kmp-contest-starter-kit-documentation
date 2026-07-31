@@ -23,6 +23,19 @@ KMPStarterKit provides an easy setup for authentication using Firebase Authentic
    - For Android, download the `google-services.json` file and place it in the `androidApp` folder of your project.
    - For iOS, download the `GoogleService-Info.plist` file and add it to the `iosApp/iosApp` folder.
 
+4. **Desktop & Web (optional)**:
+   Android and iOS auth works from the config files above. Desktop and Web have no native Firebase SDK, so
+   KMPAuth runs on a REST engine that needs explicit config. If you want auth on those targets, register a
+   **Web app** in Firebase (**Project settings → Add app → Web**) and put its config into
+   `MobileApp/local.properties`:
+   ```properties
+   FIREBASE_API_KEY=...
+   FIREBASE_PROJECT_ID=...
+   FIREBASE_APPLICATION_ID=...   # the web app id (1:...:web:...)
+   ```
+   `AppInitializer` wires these automatically when set; leave them **empty for mobile-only** projects
+   (blank simply means no desktop/web auth).
+
 
 ## Implementing Authentication
 
