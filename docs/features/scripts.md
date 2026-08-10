@@ -1,0 +1,188 @@
+---
+sidebar_position: 16
+---
+
+# Scripts
+
+Helper scripts are located in the `MobileApp/scripts/` directory. Run all scripts from the `MobileApp/` directory.
+
+## Refactor Package
+
+Renames the app's package / `applicationId` / iOS bundle ID and display name across the whole project — Kotlin packages and directories, Gradle files, Firebase/Google-services configs, iOS `Info.plist` / `project.pbxproj`, GitHub publish workflows, the helper scripts, and package references in the docs/guidelines (READMEs, `AGENTS.md`, `skills/`, `AiGuidelines/`) — covering both the dotted id (`com.x.y`) and the slashed path (`com/x/y`) forms.
+
+```bash
+# Full refactor — Kotlin packages + applicationId + bundle ID + app name:
+./scripts/refactor_package.sh --app-id com.example.newapp --app-name NewApp
+
+# IDs + app name only, keep Kotlin packages/dirs (fewer merge conflicts when
+# spinning multiple apps off one base):
+./scripts/refactor_package.sh --app-id com.example.newapp --app-name NewApp --skip-package-rename
+```
+
+**Arguments & options:**
+- `--app-id <id>` (required) — new Android `applicationId` / iOS bundle ID (e.g. `com.example.newapp`).
+- `--app-name <name>` (required) — new app display name.
+- `--skip-package-rename` — keep Kotlin packages/directories; only update IDs, Firebase refs, and app name. **Default: off** (packages are renamed).
+- `--old-app-id <id>` / `--old-app-name <name>` — override the values being replaced. By default these are **auto-detected** from the project (old id from the androidApp `namespace`, old name from `rootProject.name` in `settings.gradle.kts`), so re-refactoring an already-renamed project just works without passing them. If detection can't find them, the script **aborts** (rather than guessing a default) and asks you to pass these flags.
+- `-y`, `--yes` — skip the confirmation prompt (required for non-interactive/CI use).
+
+> Positional `<newAppId> <newAppName>` are still accepted as a fallback, but the named flags above are preferred.
+
+**Notes:**
+- Edits files in place and is irreversible — **commit or back up first**. The script prints a plan and asks for confirmation unless `-y` is passed.
+- Idempotent — re-running with the same args is a no-op once applied.
+- Replace `google-services.json` / `GoogleService-Info.plist` with configs for the new app ID after running.
+- Requires `perl` (preinstalled on macOS and CI Linux).
+
+---
+
+## Update Version
+
+Automatically increments the version code and optionally updates the version name for both Android and iOS in one go.
+
+```bash
+# Auto-increment patch version (e.g., 1.0.0 → 1.0.1) and bump version code:
+./scripts/update_version.sh
+
+# Set a specific version name:
+./scripts/update_version.sh -v "2.0.0"
+```
+
+**What it does:**
+- Reads current Android `versionCode` and `versionName` from `androidApp/build.gradle.kts`
+- Increments Android `versionCode` by 1
+- Reads and updates iOS `CURRENT_PROJECT_VERSION` and `MARKETING_VERSION` in `project.pbxproj`
+- Updates iOS `Info.plist` (`CFBundleVersion` and `CFBundleShortVersionString`)
+- If no `-v` flag is provided, the patch version (last number) is auto-incremented
+
+**Note:** Make sure the script has executable permission: `chmod +x scripts/update_version.sh`
+
+---
+
+## Generate Android Keystore
+
+Generates a signed keystore file and its properties file for Play Store publishing.
+
+```bash
+# Using person name only:
+./scripts/generate_android_keystore.sh "Your Name" ""
+
+# Using organization only:
+./scripts/generate_android_keystore.sh "" "YourCompany"
+
+# Using both:
+./scripts/generate_android_keystore.sh "Your Name" "YourCompany"
+```
+
+**What it does:**
+- Generates a keystore at `distribution/android/keystore/keystore.jks`
+- Creates `distribution/android/keystore/keystore.properties` with auto-generated secure passwords
+- Default key validity is 10,000 days
+
+---
+
+## Create Local Data Layer
+
+Scaffolds a Room 3 entity + DAO end-to-end in `commonMain`.
+
+```bash
+./scripts/make_local.sh Note
+```
+
+**What it does:**
+- Creates the domain model in `commonMain/.../domain/model/` (skipped if it already exists).
+- Creates the `@Entity` with `toEntity()`/`toModel()` extension-function mappers.
+- Creates the `@Dao` with the standard CRUD surface (`getById`, `getByIdFlow`, `getAllFlow`, `upsert`, `delete`, `deleteAll`).
+- Registers the entity in `@Database(entities = [...])` on `AppDatabase`.
+- Adds the abstract DAO accessor on `AppDatabase`.
+- Registers `single { get<AppDatabase>().<name>Dao() }` in `DatabaseModule.kt`.
+
+**Notes:**
+- Idempotent — re-running for the same model skips files / wiring already in place.
+- Insertion points in `AppDatabase.kt` and `DatabaseModule.kt` are marked with `// Add new ... — make_local.sh inserts here.` comments. Leave those alone.
+- After scaffolding: edit the generated entity to add real columns (and update the mappers), then bump `@Database(version = ...)` and add a `Migration` if you've already shipped.
+
+---
+
+## Create KMP Module
+
+Scaffolds a new Kotlin Multiplatform library module with the convention plugin applied.
+
+```bash
+# Create module in default libs/ directory:
+./scripts/create_module.sh my-module
+
+# Create module in a custom directory:
+./scripts/create_module.sh my-module custom-dir
+
+# Create module with a custom namespace:
+./scripts/create_module.sh my-module libs com.example.mymodule
+```
+
+**What it does:**
+- Creates the module directory with `build.gradle.kts` using the `configure-kmp-library-module` convention plugin
+- Sets up `commonMain` source directory with the correct package structure
+- Adds the module to `settings.gradle.kts` automatically
+
+---
+
+## Generate ASO Metadata
+
+Uses OpenAI to generate optimized App Store and Play Store metadata (titles, descriptions, keywords) for your app.
+
+```bash
+# Generate from an app idea:
+./scripts/generate_aso_metadata.sh --idea "AI photo editor"
+
+# Generate from a PRD file:
+./scripts/generate_aso_metadata.sh --idea-file AiGuidelines/project/prd.md --store ios
+
+# Generate with target keywords and multiple locales:
+./scripts/generate_aso_metadata.sh --idea "OCR scanner" --keywords "document scanner,ocr app" --locales "en-US,es-ES"
+
+# Translate existing metadata to other locales:
+./scripts/generate_aso_metadata.sh --base-locale "en-US" --locales "es-ES,fr-FR"
+```
+
+**What it does:**
+- Generates ASO-optimized metadata for iOS (name, subtitle, keywords, description) and/or Android (title, short description, full description)
+- Outputs files to `distribution/ios/appstore_metadata/` and `distribution/android/playstore_metadata/`
+- Supports multiple locales in parallel
+- Can translate existing metadata to new locales
+
+**Options:**
+- `--idea "<text>"` — Short app idea or description
+- `--idea-file <file>` — Path to PRD or idea document
+- `--base-locale <path>` — Existing locale folder for translation mode
+- `--keywords "<k1,k2>"` — Target ASO keywords
+- `--locales "<l1,l2>"` — Comma-separated locales (default: `en-US`)
+- `--store ios|android|both` — Target store (default: `both`)
+
+**Requires:** `OPENAI_API_KEY` set in `local.properties`, `~/credentials/credentials.txt`, or in the script itself.
+
+---
+
+## Generate Store Screenshots
+
+Renders every `@Preview @StoreScreenshot` composable into upload-ready PNGs at App Store / Play Store pixel sizes — rendered entirely by Compose, no Fastlane / ImageMagick / Ruby toolchain. The capture is the screen as it renders: no marketing chrome, device frames, or headlines are added.
+
+```bash
+./scripts/generate_store_screenshots.sh
+```
+
+**What it does:**
+- Runs `:shared:generateStoreScreenshots` with `-PgenerateStoreScreenshots=true` so the gated `StoreScreenshotGeneratorTest` actually executes.
+- Roborazzi captures each `@Preview @StoreScreenshot` at the dimensions declared in its `StoreDevice` enum value.
+- Output: `distribution/store_screenshots/<locale>/<device>/<tag>_<methodName>.png`.
+
+**Add a new screenshot** by writing a `@Preview @StoreScreenshot @Composable` function anywhere under `com.kotlinfoundation.koko.*`. See [Store Screenshots](./store-screenshots.md) for the authoring pattern.
+
+## Sync Template
+
+Pulls starter-kit template updates into an app created from it — even after the package rename, and even for repos created with GitHub's "Use this template" (no shared history).
+
+```bash
+./MobileApp/scripts/sync_template.sh   # run from the repo root
+```
+
+It keeps a `template-base` branch of template snapshots *rendered as your app* (the refactor applied to the incoming tree), merges on a `template-sync/<sha>` work branch so your branch stays untouched, and records the synced commit in `.template-version`. Release notes per template change live in `CHANGELOG.md`. See [Template Sync](./template-sync.md) for the full flow.
