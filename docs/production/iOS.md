@@ -115,6 +115,6 @@ XCODEPROJ_PATH="$PWD/iosApp/iosApp.xcodeproj" \
   ./gradlew :shared:integrateEmbedAndSign :shared:integrateLinkagePackage
 ```
 
-Then add/verify the matching Swift package version in Xcode (File → Add Package Dependencies — e.g. `firebase-ios-sdk` **exact `12.14.0`** for KMPNotifier 2.0), commit the regenerated `KotlinMultiplatformLinkedPackage/` + `iosApp.xcodeproj` changes, and rebuild.
+Then add/verify the matching Swift package version in Xcode (File → Add Package Dependencies — e.g. `firebase-ios-sdk` **exact `12.17.0`**, the floor required by KMPAuth 3.0.5 and GitLive firebase 3), commit the regenerated `KotlinMultiplatformLinkedPackage/` + `iosApp.xcodeproj` changes, and rebuild.
 
 > `integrateEmbedAndSign` and `integrateLinkagePackage` are **one-time setup tasks** that edit the Xcode project — they are *not* part of the normal build, so you don't run them on every build. The per-build work is the committed `embedAndSign` run-script phase.
