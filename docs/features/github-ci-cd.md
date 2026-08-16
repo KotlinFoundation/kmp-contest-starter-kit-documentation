@@ -137,9 +137,11 @@ reaches the repository the workflow runs in.
 An iOS distribution certificate belongs to the Apple **account** and Apple issues at most
 **two**. Storing certificates inside each app's own repo mints a new one per app and exhausts them
 almost immediately. The provisioning profile is the per-app piece; the certificate is shared.
-Releases therefore run `match` **read-only**, so no build can create a certificate. Set
-`MATCH_READONLY=false` for the single first run that fills an empty certs repo, then unset it.
-Keep `MATCH_PASSWORD` safe — without it the stored certificates cannot be decrypted.
+Releases therefore run `match` **read-only**, so no build can create a certificate. For the single
+first run that fills an empty certs repo, add a repository **variable** (not a secret)
+`MATCH_READONLY` set to `false`, then delete it — `gh variable set MATCH_READONLY --body false`.
+A secret valued `false` would mask that word throughout the build log. Keep `MATCH_PASSWORD` safe —
+without it the stored certificates cannot be decrypted.
 :::
 
 Because `APPSTORE_*` and `MATCH_*` are identical for every app on one Apple account, they work

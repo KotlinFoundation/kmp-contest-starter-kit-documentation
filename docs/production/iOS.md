@@ -110,8 +110,19 @@ To automate the publishing process using GitHub Actions, follow these steps:
    certificates can no longer be decrypted, which costs you one of those two slots.
 
    **First release only:** the workflow runs `match` read-only so no build can ever mint a
-   certificate. While the certs repo is still empty, run the release once with `MATCH_READONLY`
-   set to `false` so the certificate is created and stored, then remove it.
+   certificate. While the certs repo is still empty, add a repository **variable** named
+   `MATCH_READONLY` set to `false` (repo Settings → Secrets and variables → Actions → **Variables**
+   tab, *not* Secrets), run the release once so the certificate is created and stored, then delete
+   the variable. Leaving it in place lets any later build mint another certificate and exhaust the
+   account.
+
+   ```bash
+   gh variable set MATCH_READONLY --body false   # bootstrap run only
+   gh variable delete MATCH_READONLY             # back to read-only
+   ```
+
+   It is a variable rather than a secret because a secret whose value is `false` causes GitHub to
+   mask the word "false" throughout the build log, which makes the run unreadable.
 
    You also need a repository secret for **every key in `MobileApp/local.properties.example`**.
    That file does not exist on a CI runner, so the workflow rebuilds it from your secrets. A key
