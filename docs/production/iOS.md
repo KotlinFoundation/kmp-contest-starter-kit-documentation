@@ -82,14 +82,41 @@ To automate the publishing process using GitHub Actions, follow these steps:
 2. **Add Secrets to GitHub**:
    - Go to your GitHub repository, click on **Settings**, then **Secrets and Variables**, and select **Actions**.
    - Add the following secrets:
-     - `IOS_APP_CERTIFICATE_P12_BASE64`: Run `base64 -i Certificates.p12 | pbcopy` to get the base64 encoded version of your p12 file.
-     - `IOS_APP_CERTIFICATE_P12_PASSWORD`: Enter the password you used to secure the `Certificates.p12` file.
      - `APPSTORE_KEY_ID`: Your API Key ID from App Store Connect.
-     - `APPSTORE_ISSUER_ID`: Your Issuer ID from App Store Connect.
-     - `APPSTORE_PRIVATE_KEY`: The content of the downloaded private key file.
-     - `APPSTORE_TEAM_ID`: Your App Store Connect team ID .
-     - `IOS_APP_DEVELOPMENT_PROVISION_UUID`: The UUID of your development provisioning profile (Open the file in a text editor and search for *UUID*).  
-     - `IOS_APP_DISTRIBUTION_PROVISION_UUID`: The UUID of your distribution provisioning profile (Open the file in a text editor and search for *UUID*).  
+     - `APPSTORE_ISSUER_ID`: Your Issuer ID, shown above the key list on the same page.
+     - `APPSTORE_PRIVATE_KEY`: The **base64** of the downloaded `AuthKey_*.p8` — run `base64 -i AuthKey_XXXX.p8 | pbcopy`. Not the raw file contents.
+     - `MATCH_PASSWORD`: A passphrase **you invent** (for example `openssl rand -base64 24`). It encrypts the stored signing certificates. Save it.
+     - `MATCH_GIT_URL`: The https URL of your private certificates repo, e.g. `https://github.com/you/ios-certificates`.
+     - `MATCH_GIT_BASIC_AUTHORIZATION`: `printf 'x-access-token:%s' <PAT> | base64 | tr -d '\n'`, where `<PAT>` is a fine-grained token with *Contents: Read and write* on that certificates repo.
+
+   Create the API key with the **App Manager** role — a *Developer* key cannot create
+   certificates and the release fails inside `match`. The `.p8` downloads once.
+
+3. **Create the certificates repo (once per Apple account)**:
+   - Make an empty **private** GitHub repo, e.g. `ios-certificates`.
+   - Create a fine-grained personal access token with *Contents: Read and write* on that repo,
+     and encode it into `MATCH_GIT_BASIC_AUTHORIZATION` as shown above. The built-in
+     `GITHUB_TOKEN` cannot be used — it only reaches the repository the workflow runs in.
+
+   fastlane `match` creates the distribution certificate and provisioning profile on the runner
+   from your API key, encrypts them with `MATCH_PASSWORD`, and stores them there. Later releases,
+   **and your other apps**, reuse them. **No `.p12` export, no provisioning-profile UUIDs, no team
+   ID** — delete `IOS_APP_CERTIFICATE_P12_BASE64`, `IOS_APP_CERTIFICATE_P12_PASSWORD`,
+   `APPSTORE_TEAM_ID` and the provision UUIDs if you set them for an earlier version of this kit.
+
+   **Use one certificates repo for your whole Apple account, not one per app.** A distribution
+   certificate belongs to the account and Apple issues at most **two**; a per-app store mints a new
+   one for every app and exhausts them almost immediately. Losing `MATCH_PASSWORD` means the stored
+   certificates can no longer be decrypted, which costs you one of those two slots.
+
+   **First release only:** the workflow runs `match` read-only so no build can ever mint a
+   certificate. While the certs repo is still empty, run the release once with `MATCH_READONLY`
+   set to `false` so the certificate is created and stored, then remove it.
+
+   You also need a repository secret for **every key in `MobileApp/local.properties.example`**.
+   That file does not exist on a CI runner, so the workflow rebuilds it from your secrets. A key
+   with no secret behind it does not fail the build — it ships a placeholder, and the released app
+   has dead sign-in, ads, AI or paywall. The workflow prints a warning listing anything missing.
 
 
 

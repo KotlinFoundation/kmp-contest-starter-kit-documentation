@@ -83,16 +83,67 @@ To upload the Android app to the Play Store, use a Google Play service account. 
 - **Name**: `GOOGLE_WEB_CLIENT_ID`
 - **Value**: Google web client ID for authentication. See [Authentication](../features/auth)
 
-#### In-App Purchase/Subscription - RevenueCat Keys 
+#### App build keys
 
-See [In-App Purchases](../features/inapp-purchases-subscription)
-- **Name**: `REVENUECAT_ANDROID_API_KEY`
-- **Value**: API key for RevenueCat Android integration.
+Every key listed in `MobileApp/local.properties.example` needs a repository secret **of the same
+name**. On a CI runner `local.properties` does not exist, and the workflows rebuild it from that
+file — so a secret you never set becomes an empty or placeholder value.
 
-- **Name**: `REVENUECAT_IOS_API_KEY`
-- **Value**: API key for RevenueCat iOS integration.  
+That matters more than it sounds. Each `getRequiredProperty()` in the build declares a default, so
+a missing key **does not fail the build**: it produces a green release whose sign-in, ads, AI or
+paywall silently do nothing. The release workflows print a warning naming every key with no secret
+behind it — read that warning before shipping.
 
+At the time of writing the list is:
 
+| Secret | What it is |
+|--------|------------|
+| `GOOGLE_WEB_CLIENT_ID` | Google web client ID — see [Authentication](../features/auth) |
+| `FIREBASE_API_KEY`, `FIREBASE_PROJECT_ID`, `FIREBASE_APPLICATION_ID` | Firebase **Web app** config, needed for desktop and web auth |
+| `SUBSCRIPTION_PROVIDER_ANDROID_API_KEY`, `SUBSCRIPTION_PROVIDER_IOS_API_KEY` | Adapty or RevenueCat SDK keys — see [In-App Purchases](../features/inapp-purchases-subscription) |
+| `ADMOB_APP_ID_ANDROID`, `ADMOB_BANNER_AD_ID_ANDROID`, `ADMOB_INTERSTITIAL_AD_ID_ANDROID`, `ADMOB_REWARDED_AD_ID_ANDROID` | AdMob Android IDs — see [AdMob Ads](../features/admob-ads) |
+| `ADMOB_BANNER_AD_ID_IOS`, `ADMOB_INTERSTITIAL_AD_ID_IOS`, `ADMOB_REWARDED_AD_ID_IOS` | AdMob iOS IDs |
+| `OPENAI_API_KEY`, `REPLICATE_API_KEY` | Only for direct-mode AI while prototyping. Production routes through the Cloud Functions proxy and leaves these empty |
+
+Trust `local.properties.example` over this table — the workflows read the file, so it is the
+source of truth.
+
+#### iOS publishing
+
+iOS releases sign themselves on the GitHub runner with fastlane `match` — you never export a
+certificate, and you do not need a Mac.
+
+| Secret | What it is | How to get it |
+|--------|------------|---------------|
+| `APPSTORE_KEY_ID` | App Store Connect API Key ID | App Store Connect → Users and Access → Integrations → API Keys |
+| `APPSTORE_ISSUER_ID` | Issuer ID | same page, shown above the key list |
+| `APPSTORE_PRIVATE_KEY` | **base64** of the `AuthKey_*.p8` | `base64 -i AuthKey_XXXX.p8 \| pbcopy` — base64, not the raw file |
+| `MATCH_PASSWORD` | passphrase you invent | `openssl rand -base64 24`, then save it |
+| `MATCH_GIT_URL` | https URL of your private certificates repo | e.g. `https://github.com/you/ios-certificates` |
+| `MATCH_GIT_BASIC_AUTHORIZATION` | base64 of `x-access-token:<PAT>` | `printf 'x-access-token:%s' <PAT> \| base64 \| tr -d '\n'` |
+
+Create the API key with the **App Manager** role — a *Developer* key cannot create certificates
+and the release fails inside `match`. The `.p8` downloads only once.
+
+##### The certificates repo
+
+`match` keeps your signing material in a **separate private repo, shared by every app on the same
+Apple account**. Create an empty private repo (e.g. `ios-certificates`), then a **fine-grained
+personal access token** with *Contents: Read and write* on just that repo, and encode it into
+`MATCH_GIT_BASIC_AUTHORIZATION`. The built-in `GITHUB_TOKEN` cannot be used, because it only
+reaches the repository the workflow runs in.
+
+:::caution One certificates repo per Apple account, not per app
+An iOS distribution certificate belongs to the Apple **account** and Apple issues at most
+**two**. Storing certificates inside each app's own repo mints a new one per app and exhausts them
+almost immediately. The provisioning profile is the per-app piece; the certificate is shared.
+Releases therefore run `match` **read-only**, so no build can create a certificate. Set
+`MATCH_READONLY=false` for the single first run that fills an empty certs repo, then unset it.
+Keep `MATCH_PASSWORD` safe — without it the stored certificates cannot be decrypted.
+:::
+
+Because `APPSTORE_*` and `MATCH_*` are identical for every app on one Apple account, they work
+well as **GitHub organisation secrets** — a new app then only needs its own build keys.
 
 When you add all the required GitHub secrets, your settings should look something like this:
 ![GitHub Secrets Example](/img/github-secrets.png)
