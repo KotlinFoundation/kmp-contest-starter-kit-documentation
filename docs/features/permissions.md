@@ -36,8 +36,25 @@ Available helpers (in `util/permissions/AppPermissionState.kt`):
 | `rememberNotificationPermissionState()` | Notifications (Android 13+ / iOS) | — |
 | `rememberCameraPermissionState()` | Camera | `NSCameraUsageDescription` |
 | `rememberGalleryPermissionState()` | Photo gallery | `NSPhotoLibraryUsageDescription` |
-| `rememberLocationPermissionState()` | Precise location | `NSLocationWhenInUseUsageDescription` |
-| `rememberMicrophonePermissionState()` | Microphone | `NSMicrophoneUsageDescription` |
+
+These are the permissions the kit ships, and it depends only on their Calf modules
+(`calf-permissions-core`, `-camera`, `-gallery`, `-notifications`).
+
+:::warning Do not use the umbrella `calf-permissions` artifact
+It links every permission API — location, bluetooth, contacts, calendar and the rest. App Store
+review scans for those symbols and rejects the upload with **ITMS-90683: Missing purpose string in
+Info.plist**, demanding a usage description for permissions your app never requests. Depend on one
+module per permission you actually use.
+:::
+
+To use another permission, add its module in `MobileApp/gradle/libs.versions.toml` and
+`shared/build.gradle.kts`, then call the generic helper with the matching Info.plist key:
+
+```kotlin
+implementation(libs.calf.permissions.location)          // build.gradle.kts
+
+rememberAppPermissionState(Permission.FineLocation)     // + NSLocationWhenInUseUsageDescription
+```
 
 ### Ask on screen entry
 
