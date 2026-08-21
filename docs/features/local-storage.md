@@ -98,3 +98,15 @@ class UserRepository(private val userDao: UserDao) {
 ```
 
 Refer to `ExampleEntity` / `ExampleDao` for a working template.
+
+## Release builds and R8
+
+Android release builds are minified, and Room finds the generated `AppDatabase_Impl` class by name at
+runtime. `androidApp/proguard-rules.pro` keeps it:
+
+```
+-keep class * extends androidx.room3.RoomDatabase { <init>(); }
+```
+
+Leave that rule in place. Without it the debug build works and the release build crashes the first
+time it touches the database.
